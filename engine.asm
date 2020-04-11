@@ -1,5 +1,5 @@
     .inesprg 1 ;1x 16kb PRG code
-    .ineschr 0 ;0x 8kb CHR data
+    .ineschr 1 ;1x 8kb CHR data
     .inesmap 0 ; mapper 0 = NROM, no bank swapping
     .inesmir 1 ;background mirroring (vertical mirroring = horizontal scrolling)
 
@@ -14,21 +14,64 @@ testes     .rs 1
     
 irq:
 nmi:
+  ;;This is the PPU clean up section, so rendering the next frame starts properly.
+	LDA #%10010000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
+	STA $2000
+	LDA #%00011110   ; enable sprites, enable background, no clipping on left side
+	STA $2001
+	LDA #$00        ;;tell the ppu there is no background scrolling
+	STA $2005
+	STA $2005
+
 	jsr music_engine_tick
     rti
 
 reset:
     sei	
     cld
-    
 	jsr music_engine_init
 	
-	lda #$88
+vblankwait1:
+	bit $2002
+	bpl vblankwait1
+	
+vblankwait2:
+	bit $2002
+	bpl vblankwait2
+	
+	lda $2002
+	lda #$3F
+	sta $2006   
+	lda #$00
+	sta $2006    
+	ldx #$00
+paletteLoop:
+	lda BackgroundPalette, x
+	sta $2007
+	inx
+	cpx #$10
+	bne paletteLoop
+	
+loadBG:
+	lda $2002
+	lda #$20
+	sta $2006
+	lda #$00
+	sta $2006
+	ldx #$00
+BGLoop:
+	lda Background, x
+	sta $2007
+	inx
+	cpx #$a0 ; background is 0x80 (128) long rn
+	bne BGLoop
+	
+	lda #$90
     sta $2000   ;enable NMIs
 	
-	lda #$08 ; background enabled, no sprites
+	lda #%00011110 ; background and sprites enabled
 	lda $2001
-
+	
 forever:
     jmp forever
 	
@@ -106,6 +149,25 @@ music_engine_tick:
     .bank 1
     .org $E000
 	
+BackgroundPalette:
+	.db $0f, $20, $10, $00, $04, $14, $24, $34, $04, $14, $24, $34, $04, $14, $24, $34
+	
+Background:
+	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24  ; the background, and yeah
+	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
+	
+	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
+	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
+	
+	.db $24, $1d, $11, $0e, $24, $15, $12, $0c, $0c, $24, $24, $24, $24, $24, $24, $24
+	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
+	
+	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
+	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
+	
+	.db $24, $0a, $0d, $10, $10, $0f, $13, $10, $10, $0f, $0a, $0f, $0a, $0f, $0a, $0f
+	.db $0a, $24, $04, $2c, $01, $01, $2c, $02, $2d, $02, $2d, $24, $24, $24, $24, $24
+	
 SongLengths:
 	.db $0c
 	
@@ -131,6 +193,6 @@ NoteLenLookupTbl:
                    ;to the label reset:
     .dw irq        ;external interrupt IRQ is not used in this tutorial
 	
-	.bank 4
+	.bank 2
     .org $0000
     .incbin "funtus.chr"
