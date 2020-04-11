@@ -5,7 +5,7 @@ You can build it with NESASM3
 Features so far:
 - Supports an extremely limited range of notes (C-3 to G-3)
 - Can only play notes on Pulse 1
-- Variable note durations, which only somewhat works
+- Up to eight note durations, which ~~only somewhat~~ works
 - No volume support, but there are note cuts, bin value (xxx1 1111)
 - Loops when it's done
 - Just one song
