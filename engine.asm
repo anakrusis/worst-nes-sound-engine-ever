@@ -14,14 +14,13 @@ testes     .rs 1
     
 irq:
 nmi:
-  ;;This is the PPU clean up section, so rendering the next frame starts properly.
-	LDA #%10010000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
-	STA $2000
-	LDA #%00011110   ; enable sprites, enable background, no clipping on left side
-	STA $2001
-	LDA #$00        ;;tell the ppu there is no background scrolling
-	STA $2005
-	STA $2005
+	lda #%10010000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
+	sta $2000
+	lda #%00011110   ; enable sprites, enable background, no clipping on left side
+	sta $2001
+	lda #$00  ; no scrolling
+	sta $2005
+	sta $2005
 
 	jsr music_engine_tick
     rti
@@ -49,7 +48,7 @@ paletteLoop:
 	lda BackgroundPalette, x
 	sta $2007
 	inx
-	cpx #$10
+	cpx #$20
 	bne paletteLoop
 	
 loadBG:
@@ -63,8 +62,22 @@ BGLoop:
 	lda Background, x
 	sta $2007
 	inx
-	cpx #$a0 ; background is 0x80 (128) long rn
+	cpx #$a0 ; background is 0xa0 (160) long rn
 	bne BGLoop
+	
+loadAttr:
+	lda $2002   
+	lda #$23
+	sta $2006   
+	lda #$C0
+	sta $2006   
+	ldx #$00
+attrLoop:
+	lda #$00 ; They're all zero! all of them! yay!
+	sta $2007 
+	inx
+	cpx #$20
+	bne attrLoop
 	
 	lda #$90
     sta $2000   ;enable NMIs
@@ -89,20 +102,10 @@ music_engine_init:
 	rts
 	
 music_engine_tick:
-	ldx pulse1Note ; reading tempo data 
-	lda Song, x
-	lsr a
-	lsr a
-	lsr a
-	lsr a
-	lsr a
-	tax
-	lda NoteLenLookupTbl, x
-	
-	;lda #$10 ; can substitute this line, all notes will be 0x10 ticks long
-	
+
+	lda #$00
 	cmp noteTick
-	bne .music_engine_tick_end
+	bne .music_engine_tick_new
 	
 	ldx pulse1Note ; reading pitch data
 	lda Song, x 
@@ -115,34 +118,55 @@ music_engine_tick:
 	tax
 	lda FreqLookupTbl, x
 	sta $4002
+	sta $400a
 	inx
     lda FreqLookupTbl,x
     sta $4003
+	sta $400b
 	
 	lda #$7f
 	sta $4000 ; not silent sq1
 	
 .music_engine_new_note:
-	lda #$00
-	sta noteTick 
-	
-	inc pulse1Note ; loops song if it gets to the last note
+
+	inc pulse1Note 
 	lda SongLengths
 	sta testes
 	cmp pulse1Note
+	bne .music_engine_tick_new
+	
+	lda #$00 ; loops song back to note 0 if it gets to the last note
+	sta pulse1Note
+	sta noteTick
+	jmp .music_engine_tick_end
+	
+.music_engine_tick_new:
+	
+	inc noteTick
+
+	ldx pulse1Note ; reading tempo data 
+	lda Song-1, x
+	lsr a
+	lsr a
+	lsr a
+	lsr a
+	lsr a
+	tax
+	lda NoteLenLookupTbl, x
+	cmp noteTick
 	bne .music_engine_tick_end
 	
-	lda #$00
-	sta pulse1Note
+	lda #$00 ; goes on to the next note if we reach the relative tick that corresponds to the note's length
+	sta noteTick
 	
 .music_engine_tick_end:
-	inc noteTick
 	rts
 
 .music_engine_note_cut:
 	inc noteTick
 	lda #$70 ;silence sq1
 	sta $4000
+	
 	jmp .music_engine_new_note
  
 ;----- second 8k bank of PRG-ROM    
@@ -150,6 +174,7 @@ music_engine_tick:
     .org $E000
 	
 BackgroundPalette:
+	.db $0f, $20, $10, $00, $04, $14, $24, $34, $04, $14, $24, $34, $04, $14, $24, $34
 	.db $0f, $20, $10, $00, $04, $14, $24, $34, $04, $14, $24, $34, $04, $14, $24, $34
 	
 Background:
@@ -159,22 +184,21 @@ Background:
 	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
 	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
 	
-	.db $24, $1d, $11, $0e, $24, $15, $12, $0c, $0c, $24, $24, $24, $24, $24, $24, $24
+	.db $24, $1d, $11, $0e, $24, $15, $12, $0c, $0c, $24, $24, $24, $24, $24, $24, $24  ; "THE LICC"
 	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
 	
 	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
 	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24
 	
-	.db $24, $0a, $0d, $10, $10, $0f, $13, $10, $10, $0f, $0a, $0f, $0a, $0f, $0a, $0f
+	.db $24, $0a, $0d, $10, $10, $0f, $13, $10, $10, $0f, $0a, $0f, $0a, $0f, $0a, $0f  ; "ADGGFJGGFAFAFAFA 4/11/2020"
 	.db $0a, $24, $04, $2c, $01, $01, $2c, $02, $2d, $02, $2d, $24, $24, $24, $24, $24
 	
 SongLengths:
-	.db $0c
+	.db $09
 	
 Song:
 	.db $02, $04, $05, $07 ; the licc
-	.db $04, $04, $00, $02
-	.db $1f, $1f, $1f, $1f
+	.db $24, $00, $02, $5f
 	
 FreqLookupTbl:
 	.db $ab, $09, $93, $09 ; C-3, C#3  0, 1
@@ -183,7 +207,7 @@ FreqLookupTbl:
 	.db $2d, $09, $1c, $09 ; F#3, G-3  6, 7
 	
 NoteLenLookupTbl:
-	.db $0c, $20, $30, $40
+	.db $0c, $18, $30, $60
 	
 ;---- vectors
     .org $FFFA     ;first of the three vectors starts here
