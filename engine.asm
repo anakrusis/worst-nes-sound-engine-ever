@@ -4,6 +4,7 @@
     .inesmir 1 ;background mirroring (vertical mirroring = horizontal scrolling)
 
 	.rsset $0300
+globalTick .rs 1
 noteTick   .rs 1
 pulse1Note .rs 1
 testes     .rs 1
@@ -14,6 +15,23 @@ testes     .rs 1
     
 irq:
 nmi:
+	
+BlinkAnim:	;; Silly blink animation test
+	lda #$00
+	sta $0201 ; 201 and 205 are the addresses of the two tile index bytes of the head sprites
+	sta $0205
+	
+	lda globalTick
+	and #%00111111 ; Blinks every 64 frames for 8 frames
+	cmp #$08
+	bcs BlinkAnimDone
+	
+	lda #$01
+	sta $0201
+	sta $0205
+	
+BlinkAnimDone:
+
 	lda #%10010000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
 	sta $2000
 	lda #%00011110   ; enable sprites, enable background, no clipping on left side
@@ -21,6 +39,11 @@ nmi:
 	lda #$00  ; no scrolling
 	sta $2005
 	sta $2005
+	
+	lda #$00
+	sta $2003  
+	lda #$02
+	sta $4014 ; oam dma
 
 	jsr music_engine_tick
     rti
@@ -78,6 +101,21 @@ attrLoop:
 	inx
 	cpx #$20
 	bne attrLoop
+	
+	ldx #$00 ; Cute little test sprite!
+SpriteTest:
+	lda PlayerSpriteData, x
+	sta $0200, x
+	inx
+	cpx #$10
+	bne SpriteTest
+	
+BlankOtherSprites: ; This is so you don't see the other 60 sprites in the top left corner, lol
+	lda #$ff
+	sta $0200, x
+	inx
+	cpx #$ff
+	bne BlankOtherSprites
 	
 	lda #$90
     sta $2000   ;enable NMIs
@@ -160,6 +198,7 @@ music_engine_tick:
 	sta noteTick
 	
 .music_engine_tick_end:
+	inc globalTick
 	rts
 
 .music_engine_note_cut:
@@ -173,9 +212,15 @@ music_engine_tick:
     .bank 1
     .org $E000
 	
+PlayerSpriteData:
+	.db $80, $00, $00, $80
+	.db $80, $00, $40, $88  
+	.db $88, $10, $00, $80 
+	.db $88, $11, $00, $88 
+	
 BackgroundPalette:
-	.db $0f, $20, $10, $00, $04, $14, $24, $34, $04, $14, $24, $34, $04, $14, $24, $34
-	.db $0f, $20, $10, $00, $04, $14, $24, $34, $04, $14, $24, $34, $04, $14, $24, $34
+	.db $0f, $20, $10, $00, $04, $14, $24, $34, $04, $14, $24, $34, $04, $14, $24, $34 ; bg
+	.db $0f, $15, $27, $30, $04, $14, $24, $34, $04, $14, $24, $34, $04, $14, $24, $34 ; sprites
 	
 Background:
 	.db $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24, $24  ; the background, and yeah
