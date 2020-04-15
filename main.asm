@@ -7,11 +7,18 @@
 stringPtr  .rs 2 ; Where's the string we're rendering
 strPPUAddress .rs 2 ; What address will the string go to in the ppu
 	
-	.rsset $0300
+	.rsset $0100
 globalTick .rs 1 ; For everything
-noteTick   .rs 1 ; Just local to the current note, determines when to move on to the next one
+
+pulse1Tick   .rs 1 ; Just local to the current note, determines when to move on to the next one
+noiseTick	 .rs 1
+
 pulse1Note .rs 1 ; Which note are we currently on, it's an index
-testes     .rs 1 ; Logger
+pulse2Note .rs 1
+triNote    .rs 1
+noiseNote  .rs 1
+
+testes     .rs 1 ; My trusty logger teste
 
 ;----- first 8k bank of PRG-ROM    
     .bank 0
@@ -132,14 +139,7 @@ SpriteTest:
 	inx
 	cpx #$10
 	bne SpriteTest
-	
-BlankOtherSprites: ; This is so you don't see the other 60 sprites in the top left corner, lol
-	lda #$ff
-	sta $0200, x
-	inx
-	cpx #$ff
-	bne BlankOtherSprites
-	
+
 	lda #$90
     sta $2000   ;enable NMIs
 	
@@ -149,7 +149,7 @@ BlankOtherSprites: ; This is so you don't see the other 60 sprites in the top le
 StringTest:
 	lda #$21
 	sta strPPUAddress
-	lda #$04
+	lda #$03
 	sta strPPUAddress + 1
 	
 	lda #LOW(text_Adggfjggfafafafa)
@@ -161,12 +161,12 @@ StringTest:
 	
 	lda #$20
 	sta strPPUAddress
-	lda #$cc
+	lda #$c3
 	sta strPPUAddress + 1
 	
-	lda #LOW(text_TheLicc)
+	lda #LOW(text_EngineTitle)
     sta stringPtr
-    lda #HIGH(text_TheLicc)
+    lda #HIGH(text_EngineTitle)
     sta stringPtr+1
 	
 	jsr drawString
@@ -203,24 +203,31 @@ drawStringDone:
 PlayerSpriteData:
 	.db $80, $00, $00, $80
 	.db $80, $00, $40, $88  
-	.db $88, $10, $00, $80 
-	.db $88, $11, $00, $88 
+	.db $88, $11, $00, $80 
+	.db $88, $11, $40, $88 
 	
 BackgroundPalette:
-	.db $3a, $20, $2a, $00, $04, $14, $24, $34, $04, $14, $24, $34, $04, $14, $24, $34 ; bg
+	.db $3a, $20, $2a, $11, $04, $14, $24, $34, $04, $14, $24, $34, $04, $14, $24, $34 ; bg
 	.db $2b, $15, $27, $30, $04, $14, $24, $34, $04, $14, $24, $34, $04, $14, $24, $34 ; sprites
 	
 text_TheLicc:
 	.db $1d, $31, $2e, $24, $15, $32, $2c, $2c, $ff ; "THE LICC"
 	
+text_EngineTitle:
+	.db $1d, $31, $2e, $24, $40, $38, $3b, $3c, $3d, $24, $17, $0e, $1c, $24 ; The worst NES
+	.db $3c, $38, $3e, $37, $2d, $24, $2e, $37, $30, $32, $37, $2e, $ff ; sound engine
+	
 text_Adggfjggfafafafa:
-	.db $2a, $2d, $30, $30, $2f, $33, $30, $30, $2f, $2a, $2f, $2a, $2f, $2a, $2f  ; "ADGGFJGGFAFAFAFA 4/11/2020"
-	.db $2a, $24, $04, $27, $01, $03, $27, $02, $00, $02, $00, $ff
-	
-SongLengths:
-	.db $09
-	
+	.db $2a, $2d, $30, $30, $2f, $33, $30, $30, $2f, $2a, $2f, $2a, $2f, $2a, $2f  ; "adggfjggfafafafa 4/14/2020"
+	.db $2a, $24, $04, $27, $01, $04, $27, $02, $00, $02, $00, $ff
+
 Song:
+	.db $00, $02, $04, $05, $07, $09, $0b, $0c, $0e, $10, $11, $ff ; Boring major scale lmao
+	
+SongNoise:
+	.db $20, $20, $21, $20, $ff ; kick kick snare kick
+	
+TheLicc:
 	.db $02, $04, $05, $07 ; the licc
 	.db $24, $00, $02, $5f
 	
@@ -229,9 +236,17 @@ FreqLookupTbl:
 	.db $7c, $09, $67, $09 ; D-3, D#3  2, 3
 	.db $52, $09, $3f, $09 ; E-3, F-3  4, 5
 	.db $2d, $09, $1c, $09 ; F#3, G-3  6, 7
+	.db $0c, $09, $fd, $08 ; G#3, A-3  8, 9
+	.db $ef, $08, $e1, $08 ; A#3, B-3  a, b
+	.db $d5, $08, $c9, $08 ; C-4, C#4  c, d
+	.db $bd, $08, $00, $00 ; D-4, D#4  e, f
+	.db $a9, $08, $9f, $08 ; E-4, F-4  10,11
 	
 NoteLenLookupTbl:
 	.db $0c, $18, $30, $60
+	
+NoiseEnvelope:
+	.db $3f, $37, $33, $31, $ff
 	
 ;---- vectors
     .org $FFFA     ;first of the three vectors starts here
