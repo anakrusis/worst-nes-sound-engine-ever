@@ -5,7 +5,9 @@ music_engine_init:
     lda #$7f ;set duty, no length counter stuff and volume f (last 4 bytes)
 	sta $4000
 	sta $4004
-	sta $400c
+	
+	lda #$00
+	sta pulse1Tick
 	
 	rts
 	
@@ -66,7 +68,7 @@ sq2_tick:
 	cmp pulse1Tick
 	bne .music_engine_tick_end
 	
-	lda #$00 ; goes on to the next note if we reach the relative tick that corresponds to the note's length
+	lda #$ff ; goes on to the next note if we reach the relative tick that corresponds to the note's length
 	sta pulse1Tick
 	
 .music_engine_tick_end:
@@ -87,11 +89,13 @@ noise_tick:
 	cmp noiseTick
 	bne .noise_tick_new
 	
-	ldx noiseNote ; reading pitch data
+	ldx noiseNote ; reading noise period data
 	lda SongNoise, x 
 	inc noiseNote
-	
 	sta $400e
+	
+	ldx $%11111000 ; length counter for noise on note onset
+	stx $400f
 		
 	cmp #$ff
 	bne .noise_tick_new
@@ -116,7 +120,7 @@ noise_tick:
 	cmp noiseTick
 	bne .noise_tick_end
 	
-	lda #$00 ; goes on to the next note if we reach the relative tick that corresponds to the note's length
+	lda #$ff ; goes on to the next note if we reach the relative tick that corresponds to the note's length
 	sta noiseTick
 	
 .noise_tick_end:

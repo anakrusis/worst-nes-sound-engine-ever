@@ -11,6 +11,8 @@ strPPUAddress .rs 2 ; What address will the string go to in the ppu
 globalTick .rs 1 ; For everything
 
 pulse1Tick   .rs 1 ; Just local to the current note, determines when to move on to the next one
+pulse2Tick   .rs 1
+triTick      .rs 1
 noiseTick	 .rs 1
 
 pulse1Note .rs 1 ; Which note are we currently on, it's an index
@@ -222,13 +224,15 @@ text_Adggfjggfafafafa:
 	.db $2a, $24, $04, $27, $01, $04, $27, $02, $00, $02, $00, $ff
 
 Song:
-	.db $00, $02, $04, $05, $07, $09, $0b, $0c, $0e, $10, $11, $ff ; Boring major scale lmao
+	.db $7f, $20, $02, $25, $0c ; fantasia in funk
+	.db $7f, $7f, $7f, $3f, $20, $02, $25, $0c 
+	.db $3f, $09, $5f, $7f,	$ff
 	
 SongNoise:
-	.db $20, $20, $21, $20, $ff ; kick kick snare kick
+	.db $4f, $4f, $47, $4f, $ff ; kick kick snare kick
 	
 TheLicc:
-	.db $02, $04, $05, $07 ; the licc
+	.db $02, $04, $05, $07 ; the licc (needs to be fixed, tempo values have yet changed)
 	.db $24, $00, $02, $5f
 	
 FreqLookupTbl:
@@ -243,10 +247,7 @@ FreqLookupTbl:
 	.db $a9, $08, $9f, $08 ; E-4, F-4  10,11
 	
 NoteLenLookupTbl:
-	.db $0c, $18, $30, $60
-	
-NoiseEnvelope:
-	.db $3f, $37, $33, $31, $ff
+	.db $06, $0a, $10, $20 ; 1 and 0 together make swung eight notes, 2 a quarter note, and 3 is a half note
 	
 ;---- vectors
     .org $FFFA     ;first of the three vectors starts here
