@@ -4,11 +4,13 @@
     .inesmir 1 ;background mirroring (vertical mirroring = horizontal scrolling)
 
 	.rsset $0000
+globalTick .rs 1 ; For everything
 stringPtr  .rs 2 ; Where's the string we're rendering
 strPPUAddress .rs 2 ; What address will the string go to in the ppu
 	
 	.rsset $0100
-globalTick .rs 1 ; For everything
+currentChannel .rs 1 ; $00 = pulse1, $01 = pulse2, $02 = triangle, $03 = noise
+channelOffset  .rs 1
 
 pulse1Tick   .rs 1 ; Just local to the current note, determines when to move on to the next one
 pulse2Tick   .rs 1
@@ -226,7 +228,7 @@ text_Adggfjggfafafafa:
 Song:
 	.db $7f, $20, $02, $25, $0c ; fantasia in funk
 	.db $7f, $7f, $7f, $3f, $20, $02, $25, $0c 
-	.db $3f, $09, $5f, $7f,	$ff
+	.db $3f, $09, $5f, $7f, $3f, $ff
 	
 SongNoise:
 	.db $4f, $4f, $47, $4f, $ff ; kick kick snare kick
