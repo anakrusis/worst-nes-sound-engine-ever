@@ -8,7 +8,7 @@ globalTick .rs 1 ; For everything
 stringPtr  .rs 2 ; Where's the string we're rendering
 strPPUAddress .rs 2 ; What address will the string go to in the ppu
 	
-	.rsset $0100
+	.rsset $0300
 currentChannel .rs 1 ; $00 = pulse1, $01 = pulse2, $02 = triangle, $03 = noise
 channelOffset  .rs 1
 
@@ -143,26 +143,8 @@ SpriteTest:
 	inx
 	cpx #$10
 	bne SpriteTest
-
-	lda #$90
-    sta $2000   ;enable NMIs
-	
-	lda #%00011110 ; background and sprites enabled
-	lda $2001
 	
 StringTest:
-	lda #$21
-	sta strPPUAddress
-	lda #$03
-	sta strPPUAddress + 1
-	
-	lda #LOW(text_Adggfjggfafafafa)
-    sta stringPtr
-    lda #HIGH(text_Adggfjggfafafafa)
-    sta stringPtr+1
-	
-	jsr drawString
-	
 	lda #$20
 	sta strPPUAddress
 	lda #$c3
@@ -175,27 +157,58 @@ StringTest:
 	
 	jsr drawString
 	
+EndInit:
+	lda #$90
+    sta $2000   ;enable NMIs
+	
+	lda #%00011110 ; background and sprites enabled
+	lda $2001
+	
 forever:
     jmp forever
 	
 ; drawString works like this: you set stringPtr and strPPUAddress
 ; before you call this subroutine. As long as you do that, you're good to go!
 ; Oh, and make sure all your strings end in $ff, or else you get corrupto!!
+; Also, newline character is $fe.
+
 drawString:
+	ldy #$00
+	
+setStringAddr:
 	ldx strPPUAddress
 	stx $2006
 	ldx strPPUAddress + 1
 	stx $2006
-	
-	ldy #$00
+
 drawStringLoop:
 	lda [stringPtr], y
 	cmp #$ff
 	beq drawStringDone
 	
+	cmp #$fe
+	beq newLine
+	
+writeChar: 
 	sta $2007
 	iny
+
 	jmp drawStringLoop
+
+; newLine adds 40 to the initial nametable address where text starts rendering,
+; moving it down 2 tiles = 16 pixels
+newLine:	
+	clc
+	lda strPPUAddress + 1
+	adc #$40
+	sta strPPUAddress + 1
+	
+	bcc newLineDone
+	inc strPPUAddress
+	
+newLineDone:
+	iny
+	jmp setStringAddr
 	
 drawStringDone:
 	rts
@@ -219,11 +232,13 @@ text_TheLicc:
 	
 text_EngineTitle:
 	.db $1d, $31, $2e, $24, $40, $38, $3b, $3c, $3d, $24, $17, $0e, $1c, $24 ; The worst NES
-	.db $3c, $38, $3e, $37, $2d, $24, $2e, $37, $30, $32, $37, $2e, $ff ; sound engine
+	.db $3c, $38, $3e, $37, $2d, $24, $2e, $37, $30, $32, $37, $2e, $fe ; sound engine
 	
-text_Adggfjggfafafafa:
+	.db $44, $2a, $37, $2d, $24, $38, $3d, $31, $2e, $3b, $24 ; (and other 
+	.db $3e, $3d, $32, $35, $3c, $24, $35, $38, $35, $45, $fe ; utils lol)
+	
 	.db $2a, $2d, $30, $30, $2f, $33, $30, $30, $2f, $2a, $2f, $2a, $2f, $2a, $2f  ; "adggfjggfafafafa 4/14/2020"
-	.db $2a, $24, $04, $27, $01, $04, $27, $02, $00, $02, $00, $ff
+	.db $2a, $24, $05, $27, $03, $27, $02, $00, $02, $00, $ff
 
 Song:
 	.db $7f, $20, $02, $25, $0c ; fantasia in funk
